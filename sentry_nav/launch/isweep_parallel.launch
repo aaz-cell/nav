@@ -1,0 +1,44 @@
+<launch>
+  <arg name="enable_cmd_output" default="false" />
+  <arg name="cmd_vel_topic" default="/isweep_cmd_vel" />
+  <arg name="need_replan_topic" default="/need_replan" />
+
+  <node pkg="dynamic_obstacle_adapter" type="dynamic_obstacle_adapter_node" name="dynamic_obstacle_adapter" output="screen">
+    <param name="static_map_topic" value="/prior_map" />
+    <param name="scan_topic" value="/scan" />
+    <param name="localization_topic" value="/localization" />
+    <param name="merged_map_topic" value="/isweep_planner/merged_map" />
+    <param name="obstacle_range_max" value="8.0" />
+    <param name="obstacle_inflation_cells" value="1" />
+    <param name="publish_rate" value="1.0" />
+  </node>
+
+  <node pkg="navigation_adapter" type="navigation_adapter_node" name="navigation_adapter" output="screen">
+    <param name="map_in_topic" value="/prior_map" />
+    <param name="map_out_topic" value="/isweep_planner/map" />
+    <param name="localization_topic" value="/localization" />
+    <param name="odom_topic" value="/Odometry" />
+    <param name="goal_in_topic" value="/move_base_simple/goal" />
+    <param name="planner_start_topic" value="/isweep_planner/initialpose" />
+    <param name="planner_goal_topic" value="/isweep_planner/goal" />
+    <param name="current_pose_topic" value="/isweep_planner/current_pose" />
+    <param name="current_velocity_topic" value="/isweep_planner/current_velocity" />
+    <param name="replan_topic" value="/isweep_planner/replan_request" />
+    <param name="replan_on_request" value="false" />
+  </node>
+
+  <node name="isweep_planner" pkg="isweep_planner" type="isweep_planner_node" output="screen">
+    <rosparam file="$(find isweep_planner)/config/planner.yaml" command="load" />
+    <param name="use_start_goal_params" value="false" />
+    <param name="replan_on_map_update" value="false" />
+    <remap from="/map" to="/isweep_planner/map" />
+    <remap from="/initialpose" to="/isweep_planner/initialpose" />
+    <remap from="/move_base_simple/goal" to="/isweep_planner/goal" />
+  </node>
+
+  <node pkg="planner_bridge" type="planner_bridge_node" name="planner_bridge" output="screen">
+    <param name="enable_cmd_output" value="$(arg enable_cmd_output)" />
+    <param name="cmd_vel_out_topic" value="$(arg cmd_vel_topic)" />
+    <param name="need_replan_topic" value="$(arg need_replan_topic)" />
+  </node>
+</launch>

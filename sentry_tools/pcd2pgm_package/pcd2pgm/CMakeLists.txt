@@ -36,4 +36,6 @@ include_directories(
 add_executable(pcd2pgm src/pcd2pgm.cpp)
 target_link_libraries(pcd2pgm ${catkin_LIBRARIES} ${PCL_LIBRARIES}   )
 
+add_executable(pcd_ground_align src/pcd_ground_align.cpp)
+target_link_libraries(pcd_ground_align ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 

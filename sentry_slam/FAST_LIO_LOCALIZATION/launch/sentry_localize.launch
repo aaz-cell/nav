@@ -3,8 +3,9 @@
 
 	<arg name="rviz" default="true" />
 	<arg name="use_sim_time" value="true"/>
-	<arg name="map" default="$(find fast_lio)/PCD/scans.pcd" />
-
+	<arg name="map" default="$(find fast_lio)/PCD/2026.5.24/scans.pcd" />
+    
+	
 	<!-- fast_lio -->
 	<rosparam command="load" file="$(find fast_lio_localization)/config/mid360.yaml" />
 	<param name="feature_extract_enable" type="bool" value="0"/>
@@ -20,7 +21,16 @@
 
 
 	<!-- loalization-->
-    <node pkg="fast_lio_localization" type="global_localization.py" name="global_localization" output="screen" />
+    <node pkg="fast_lio_localization" type="global_localization.py" name="global_localization" output="screen">
+        <param name="constrain_to_2d" value="true" />
+        <param name="keep_icp_z" value="false" />
+        <param name="continuous_refine" value="false" />
+        <param name="correction_alpha" value="0.15" />
+        <param name="max_correction_step_xy" value="0.03" />
+        <param name="max_correction_step_yaw" value="0.02" />
+        <param name="max_accept_delta_xy" value="0.8" />
+        <param name="max_accept_delta_yaw" value="0.5" />
+    </node>
 
 	<!-- transform  fusion-->
     <node pkg="fast_lio_localization" type="transform_fusion.py" name="transform_fusion" output="screen" />
@@ -34,19 +44,23 @@
 	</group>
 
 	<!-- load 2d map -->
-	<arg name="2dmap" default="scans.yaml" />
-	<node name = "map_server" pkg = "map_server" type = "map_server" args="$(find fast_lio)/PCD/scans.yaml /map:=prior_map"/>
+	<arg name="2dmap" default="map.yaml" />
+	<node name = "map_server" pkg = "map_server" type = "map_server" args="$(find fast_lio)/PCD/2026.5.24/map.yaml /map:=prior_map"/>
 
 	<!-- pointscloud2 to laserscans -->
 	<include file="$(find fast_lio_localization)/launch/PointsCloud2toLaserscan.launch">
 	</include>
 
+
+    
+
+
 	<!-- 发布一个雷达body到机器人足端body_foot的静态映射 -->
-	<node pkg="tf2_ros" type="static_transform_publisher" name="tf_pub_1" args="-0.10 -0.11 0 0 0 0 body body_foot" />
+	<node pkg="tf2_ros" type="static_transform_publisher" name="tf_pub_1" args="0.0 0 -1.2 0 0 0 body body_foot" />
 	<!-- 发布一个雷达初始位置camera_init到机器人足端初始位置body_init的静态映射 -->
-	<node pkg="tf2_ros" type="static_transform_publisher" name="tf_pub_2" args="-0.10 -0.11 0 0 0 0 camera_init robot_foot_init" />
+	<node pkg="tf2_ros" type="static_transform_publisher" name="tf_pub_2" args="0.0 0 -1.2 0 0 0 camera_init robot_foot_init" />
 	<!-- 发布一个雷达初始位置camera_init到map的静态映射 -->
 	<!-- <node pkg="tf2_ros" type="static_transform_publisher" name="tf_pub_3" args="0 0 0 0 0 0 map camera_init" /> -->
-
+	
 
 </launch>

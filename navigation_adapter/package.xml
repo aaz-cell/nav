@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>navigation_adapter</name>
+  <version>0.0.1</version>
+  <description>Bridge NEXTE localization/map topics to the parallel iSweep navigation chain.</description>
+
+  <maintainer email="zhl@example.com">zhl</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+
+  <export/>
+</package>

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/home/zhl/miniconda3/envs/nav/bin/python
 # coding=utf8
 from __future__ import print_function, division, absolute_import
 

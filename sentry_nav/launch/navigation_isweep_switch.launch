@@ -1,0 +1,18 @@
+<launch>
+  <arg name="run_legacy_move_base" default="false" />
+  <arg name="enable_isweep_cmd_output" default="true" />
+  <arg name="cmd_vel_topic" default="/cmd_vel" />
+  <arg name="need_replan_topic" default="/need_replan" />
+
+  <include file="$(find fast_lio_localization)/launch/sentry_localize.launch" />
+
+  <node pkg="sentry_nav" type="trans_tf_2d" name="trans_tF_2d" />
+
+  <include if="$(arg run_legacy_move_base)" file="$(find sentry_nav)/launch/sentry_movebase.launch" />
+
+  <include file="$(find sentry_nav)/launch/isweep_parallel.launch">
+    <arg name="enable_cmd_output" value="$(arg enable_isweep_cmd_output)" />
+    <arg name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
+    <arg name="need_replan_topic" value="$(arg need_replan_topic)" />
+  </include>
+</launch>

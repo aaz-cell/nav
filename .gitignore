@@ -5,4 +5,20 @@ Log/*.csv
 Log/*.pdf
 .vscode/c_cpp_properties.json
 .vscode/settings.json
-.pcd
+
+# Local tool/session state
+.codex
+.agents/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# ROS/runtime data
+*.bag
+*.db3
+*.active
+*.log
+*.pcd
+sentry_slam/**/PCD/
+src/**/PCD/

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/home/zhl/miniconda3/envs/nav/bin/python
 # coding=utf8
 from __future__ import print_function, division, absolute_import
 
@@ -21,6 +21,7 @@ initialized = False
 T_map_to_odom = np.eye(4)
 cur_odom = None
 cur_scan = None
+pending_initial_pose = None
 
 
 def pose_to_mat(pose_msg):
@@ -57,6 +58,72 @@ def inverse_se3(trans):
     # t
     trans_inverse[:3, 3] = -np.matmul(trans[:3, :3].T, trans[:3, 3])
     return trans_inverse
+
+
+def project_transform_to_2d(trans, keep_z=False):
+    xyz = tf.transformations.translation_from_matrix(trans)
+    _, _, yaw = tf.transformations.euler_from_matrix(trans)
+    return make_2d_transform(xyz[0], xyz[1], yaw, xyz[2] if keep_z else 0.0)
+
+
+def normalize_angle(angle):
+    return np.arctan2(np.sin(angle), np.cos(angle))
+
+
+def xy_yaw_from_transform(trans):
+    xyz = tf.transformations.translation_from_matrix(trans)
+    _, _, yaw = tf.transformations.euler_from_matrix(trans)
+    return xyz[0], xyz[1], yaw
+
+
+def make_2d_transform(x, y, yaw, z=0.0):
+    projected = np.eye(4)
+    projected[:3, :3] = tf.transformations.euler_matrix(0.0, 0.0, yaw)[:3, :3]
+    projected[0, 3] = x
+    projected[1, 3] = y
+    projected[2, 3] = z
+    return projected
+
+
+def stabilize_map_to_odom_update(target, force_update=False):
+    global T_map_to_odom
+
+    if force_update:
+        return target, True, 'manual'
+
+    if not initialized:
+        return target, True, 'initial'
+
+    if not CONTINUOUS_REFINE:
+        return T_map_to_odom, True, 'locked'
+
+    cur_x, cur_y, cur_yaw = xy_yaw_from_transform(T_map_to_odom)
+    target_x, target_y, target_yaw = xy_yaw_from_transform(target)
+
+    dx = target_x - cur_x
+    dy = target_y - cur_y
+    dyaw = normalize_angle(target_yaw - cur_yaw)
+    delta_xy = np.hypot(dx, dy)
+
+    if delta_xy > MAX_ACCEPT_DELTA_XY or abs(dyaw) > MAX_ACCEPT_DELTA_YAW:
+        rospy.logwarn(
+            'Reject ICP map_to_odom jump: delta_xy={:.3f}, delta_yaw={:.3f}'
+            .format(delta_xy, dyaw)
+        )
+        return T_map_to_odom, False, 'rejected'
+
+    xy_ratio = CORRECTION_ALPHA
+    if delta_xy > 1e-6:
+        xy_ratio = min(xy_ratio, MAX_CORRECTION_STEP_XY / delta_xy)
+
+    yaw_ratio = CORRECTION_ALPHA
+    if abs(dyaw) > 1e-6:
+        yaw_ratio = min(yaw_ratio, MAX_CORRECTION_STEP_YAW / abs(dyaw))
+
+    next_x = cur_x + dx * xy_ratio
+    next_y = cur_y + dy * xy_ratio
+    next_yaw = normalize_angle(cur_yaw + dyaw * yaw_ratio)
+    return make_2d_transform(next_x, next_y, next_yaw, 0.0), True, 'smoothed'
 
 
 def publish_point_cloud(publisher, header, pc):
@@ -113,7 +180,7 @@ def crop_global_map_in_FOV(global_map, pose_estimation, cur_odom):
     return global_map_in_FOV
 
 
-def global_localization(pose_estimation):
+def global_localization(pose_estimation, force_update=False):
     global global_map, cur_scan, cur_odom, T_map_to_odom
     # 用icp配准
     # print(global_map, cur_scan, T_map_to_odom)
@@ -139,7 +206,23 @@ def global_localization(pose_estimation):
     # 当全局定位成功时才更新map2odom
     if fitness > LOCALIZATION_TH:
         # T_map_to_odom = np.matmul(transformation, pose_estimation)
+        raw_transformation = transformation
+        if CONSTRAIN_TO_2D:
+            transformation = project_transform_to_2d(raw_transformation, KEEP_ICP_Z)
+        transformation, accepted, update_mode = stabilize_map_to_odom_update(transformation, force_update)
+        if not accepted:
+            return True
         T_map_to_odom = transformation
+
+        raw_xyz = tf.transformations.translation_from_matrix(raw_transformation)
+        raw_rpy = tf.transformations.euler_from_matrix(raw_transformation)
+        used_xyz = tf.transformations.translation_from_matrix(T_map_to_odom)
+        used_rpy = tf.transformations.euler_from_matrix(T_map_to_odom)
+        rospy.loginfo(
+            'ICP fitness: {:.3f}, mode: {}, raw xy/rpy/z: ({:.3f}, {:.3f})/({:.3f}, {:.3f}, {:.3f})/{:.3f}, used xy/yaw/z: ({:.3f}, {:.3f}, {:.3f})/{:.3f}'
+            .format(fitness, update_mode, raw_xyz[0], raw_xyz[1], raw_rpy[0], raw_rpy[1], raw_rpy[2], raw_xyz[2],
+                    used_xyz[0], used_xyz[1], used_rpy[2], used_xyz[2])
+        )
 
         # 发布map_to_odom
         map_to_odom = Odometry()
@@ -198,11 +281,22 @@ def cb_save_cur_scan(pc_msg):
     cur_scan.points = o3d.utility.Vector3dVector(pc[:, :3])
 
 
+def cb_manual_initial_pose(pose_msg):
+    global pending_initial_pose
+    pending_initial_pose = pose_to_mat(pose_msg)
+    rospy.logwarn('Manual relocalization pose received; it will be applied on the next localization cycle.')
+
+
 def thread_localization():
-    global T_map_to_odom
+    global T_map_to_odom, pending_initial_pose
     while True:
         # 每隔一段时间进行全局定位
         rospy.sleep(1 / FREQ_LOCALIZATION)
+        if pending_initial_pose is not None:
+            initial_pose = pending_initial_pose
+            pending_initial_pose = None
+            global_localization(initial_pose, force_update=True)
+            continue
         # TODO 由于这里Fast lio发布的scan是已经转换到odom系下了 所以每次全局定位的初始解就是上一次的map2odom 不需要再拿odom了
         global_localization(T_map_to_odom)
 
@@ -216,7 +310,7 @@ if __name__ == '__main__':
 
     # The threshold of global localization,
     # only those scan2map-matching with higher fitness than LOCALIZATION_TH will be taken
-    LOCALIZATION_TH = 0.95
+    LOCALIZATION_TH = 0.9
 
     # FOV(rad), modify this according to your LiDAR type
     FOV = 6.28
@@ -226,6 +320,14 @@ if __name__ == '__main__':
 
     rospy.init_node('fast_lio_localization')
     rospy.loginfo('Localization Node Inited...')
+    CONSTRAIN_TO_2D = rospy.get_param('~constrain_to_2d', True)
+    KEEP_ICP_Z = rospy.get_param('~keep_icp_z', False)
+    CONTINUOUS_REFINE = rospy.get_param('~continuous_refine', True)
+    CORRECTION_ALPHA = rospy.get_param('~correction_alpha', 0.15)
+    MAX_CORRECTION_STEP_XY = rospy.get_param('~max_correction_step_xy', 0.03)
+    MAX_CORRECTION_STEP_YAW = rospy.get_param('~max_correction_step_yaw', 0.02)
+    MAX_ACCEPT_DELTA_XY = rospy.get_param('~max_accept_delta_xy', 0.8)
+    MAX_ACCEPT_DELTA_YAW = rospy.get_param('~max_accept_delta_yaw', 0.5)
 
     # publisher
     pub_pc_in_map = rospy.Publisher('/cur_scan_in_map', PointCloud2, queue_size=1)
@@ -255,6 +357,7 @@ if __name__ == '__main__':
     rospy.loginfo('Initialize successfully!!!!!!')
     rospy.loginfo('')
     # 开始定期全局定位
+    rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, cb_manual_initial_pose, queue_size=1)
     _thread.start_new_thread(thread_localization, ())
 
     rospy.spin()

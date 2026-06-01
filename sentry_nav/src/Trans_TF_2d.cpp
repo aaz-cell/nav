@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
 // tf chage https://zhuanlan.zhihu.com/p/340016739
 
 
@@ -29,13 +30,12 @@ int main(int argc, char** argv){
     float robot_pose_x=transform_listener.getOrigin().x();
     float robot_pose_y=transform_listener.getOrigin().y();
     float robot_pose_z=0;
-    float robot_oriation_x=transform_listener.getRotation().getX();
-    float robot_oriation_y=transform_listener.getRotation().getY();
-    float robot_oriation_z=transform_listener.getRotation().getZ();
-    float robot_oriation_w=transform_listener.getRotation().getW();
+    double robot_yaw = tf::getYaw(transform_listener.getRotation());
+    tf::Quaternion yaw_only_quaternion;
+    yaw_only_quaternion.setRPY(0.0, 0.0, robot_yaw);
 
     transform_broadcaster.setOrigin( tf::Vector3(robot_pose_x, robot_pose_y, 0.0) );
-    transform_broadcaster.setRotation( tf::Quaternion(0, 0, robot_oriation_z, robot_oriation_w) );
+    transform_broadcaster.setRotation(yaw_only_quaternion);
     broadcaster.sendTransform(tf::StampedTransform(transform_broadcaster, ros::Time::now(), "map", "body_2d"));
     
 
