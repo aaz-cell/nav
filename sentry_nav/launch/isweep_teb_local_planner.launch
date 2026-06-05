@@ -1,0 +1,31 @@
+<launch>
+  <arg name="enable" default="false" />
+  <arg name="global_plan_topic" default="/isweep_planner/trajectory" />
+  <arg name="cmd_vel_topic" default="/isweep_teb_cmd_vel" />
+  <arg name="status_topic" default="/isweep_teb_local_planner/status" />
+
+  <group if="$(arg enable)">
+    <node pkg="sentry_nav" type="isweep_teb_local_planner_node"
+          name="isweep_teb_local_planner" output="screen">
+      <param name="global_plan_topic" value="$(arg global_plan_topic)" />
+      <param name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
+      <param name="status_topic" value="$(arg status_topic)" />
+      <param name="control_rate" value="10.0" />
+      <param name="plan_timeout" value="0.0" />
+
+      <rosparam file="$(find sentry_nav)/param/costmap_common_params.yaml"
+                command="load" ns="local_costmap" />
+      <rosparam file="$(find sentry_nav)/param/local_costmap_params.yaml"
+                command="load" />
+      <rosparam file="$(find sentry_nav)/param/teb_local_planner_params.yaml"
+                command="load" />
+
+      <param name="TebLocalPlannerROS/odom_topic" value="/Odometry" />
+      <param name="TebLocalPlannerROS/max_vel_x" value="0.5" />
+      <param name="TebLocalPlannerROS/max_vel_x_backwards" value="0.2" />
+      <param name="TebLocalPlannerROS/max_vel_theta" value="0.7" />
+      <param name="TebLocalPlannerROS/acc_lim_x" value="0.6" />
+      <param name="TebLocalPlannerROS/acc_lim_theta" value="0.6" />
+    </node>
+  </group>
+</launch>

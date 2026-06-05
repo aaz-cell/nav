@@ -54,6 +54,7 @@ class NavigationAdapter {
     pnh_.param<bool>("auto_start_from_localization", auto_start_from_localization_, true);
     pnh_.param<bool>("replan_on_request", replan_on_request_, true);
     pnh_.param<double>("goal_republish_delay", goal_republish_delay_sec_, 0.05);
+    pnh_.param<double>("replan_request_min_interval", replan_request_min_interval_sec_, 1.0);
   }
 
   void MapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
@@ -91,9 +92,18 @@ class NavigationAdapter {
   }
 
   void ReplanCallback(const std_msgs::Bool::ConstPtr& msg) {
-    if (!replan_on_request_ || !msg->data || !have_goal_) {
+    const bool rising_edge = msg->data && !last_replan_request_;
+    last_replan_request_ = msg->data;
+    if (!replan_on_request_ || !rising_edge || !have_goal_) {
       return;
     }
+    const ros::Time now = ros::Time::now();
+    if (!last_replan_publish_time_.isZero() &&
+        (now - last_replan_publish_time_).toSec() <
+            replan_request_min_interval_sec_) {
+      return;
+    }
+    last_replan_publish_time_ = now;
     PublishPlannerInputs("replan_request");
   }
 
@@ -156,6 +166,9 @@ class NavigationAdapter {
   bool auto_start_from_localization_ = true;
   bool replan_on_request_ = true;
   double goal_republish_delay_sec_ = 0.05;
+  double replan_request_min_interval_sec_ = 1.0;
+  bool last_replan_request_ = false;
+  ros::Time last_replan_publish_time_;
 };
 
 }  // namespace

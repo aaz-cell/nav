@@ -51,6 +51,11 @@ class IsweepPlannerNode {
     pnh_.param("startup_map_wait_timeout", startup_map_wait_timeout_sec_, 0.0);
     pnh_.param("startup_map_wait_poll", startup_map_wait_poll_sec_, 1.0);
     pnh_.param("replan_on_map_update", replan_on_map_update_, false);
+    pnh_.param<std::string>("local_planner/local_obstacle_map_topic",
+                            local_obstacle_map_topic_,
+                            "/isweep_planner/local_obstacle_map");
+    pnh_.param("local_planner/use_local_obstacle_map",
+               use_local_obstacle_map_, true);
     if (startup_map_wait_poll_sec_ < 0.1) {
       startup_map_wait_poll_sec_ = 0.1;
     }
@@ -168,6 +173,15 @@ class IsweepPlannerNode {
                                       &IsweepPlannerNode::CurrentPoseCallback, this);
     current_velocity_sub_ = nh_.subscribe("/isweep_planner/current_velocity", 1,
                                           &IsweepPlannerNode::CurrentVelocityCallback, this);
+    if (use_local_obstacle_map_) {
+      local_obstacle_map_sub_ =
+          nh_.subscribe(local_obstacle_map_topic_, 1,
+                        &IsweepPlannerNode::LocalObstacleMapCallback, this);
+      ROS_INFO("Local planner obstacle layer enabled: %s",
+               local_obstacle_map_topic_.c_str());
+    } else {
+      ROS_INFO("Local planner obstacle layer disabled; using global static map only.");
+    }
 
     trajectory_pub_ = nh_.advertise<nav_msgs::Path>("/isweep_planner/trajectory", 1, true);
     coarse_path_pub_ = nh_.advertise<nav_msgs::Path>("/isweep_planner/trajectory_astar", 1, true);
@@ -219,6 +233,21 @@ class IsweepPlannerNode {
     } else {
       ROS_DEBUG("Map update integrated without global replan.");
     }
+  }
+
+  void LocalObstacleMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
+    if (!use_local_obstacle_map_) {
+      return;
+    }
+    local_obstacle_grid_map_.fromOccupancyGrid(msg);
+    local_obstacle_checker_.init(local_obstacle_grid_map_, runtime_.footprint(),
+                                 runtime_.collision_checker().numYawBins());
+    local_planner_.SetLocalObstacleMap(&local_obstacle_grid_map_,
+                                       &local_obstacle_checker_);
+    local_obstacle_map_ready_ = true;
+    ROS_DEBUG_THROTTLE(2.0,
+                       "Local obstacle map received: %u x %u @ %.3f m",
+                       msg->info.width, msg->info.height, msg->info.resolution);
   }
 
   void StartCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
@@ -428,6 +457,7 @@ class IsweepPlannerNode {
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
   ros::Subscriber map_sub_;
+  ros::Subscriber local_obstacle_map_sub_;
   ros::Subscriber start_sub_;
   ros::Subscriber goal_sub_;
   ros::Subscriber current_pose_sub_;
@@ -448,6 +478,8 @@ class IsweepPlannerNode {
   ros::Timer local_planner_timer_;
 
   SvsdfRuntime runtime_;
+  GridMap local_obstacle_grid_map_;
+  CollisionChecker local_obstacle_checker_;
   RiskAwareLocalPlanner local_planner_;
   RiskAwareGlobalReferenceData latest_global_reference_;
   LocalPlannerState current_state_;
@@ -460,6 +492,7 @@ class IsweepPlannerNode {
   bool skip_duplicate_startup_map_ = false;
   nav_msgs::OccupancyGrid startup_map_;
   bool map_ready_ = false;
+  bool local_obstacle_map_ready_ = false;
   bool start_ready_ = false;
   bool goal_ready_ = false;
   bool current_pose_ready_ = false;
@@ -467,6 +500,8 @@ class IsweepPlannerNode {
   bool replan_on_map_update_ = false;
   bool has_planned_once_ = false;
   double local_planner_update_rate_hz_ = 10.0;
+  bool use_local_obstacle_map_ = true;
+  std::string local_obstacle_map_topic_ = "/isweep_planner/local_obstacle_map";
 };
 
 }  // namespace isweep_planner

@@ -94,6 +94,7 @@ topology:
   num_samples: 15000          # 【结算时间/精度】PRM前端拓扑采样点数。点数越多，在复杂迷宫中找到解(且是最优解)概率越高，但建图极慢。
   knn: 10                     # 拓扑图连接邻居数。越大路径越平滑，建图耗时越长。
   max_paths: 2                # 探索候选路径的数量上限。
+  safe_distance: 0.25          # 与原版 iSweep 对齐，避免全局拓扑路径过度贴墙。
 
 # 论文对应 3.2.2 路径离散化与风险段判定
 # 作用：
@@ -143,8 +144,8 @@ hybrid_astar:                 # (作为Fallback回退时触发，极其耗时)
 # - min/max_preferred_speed 控制不同风险等级映射出的建议速度范围。
 reference:
   sample_dt: 0.15
-  min_preferred_speed: 0.12
-  max_preferred_speed: 0.50
+  min_preferred_speed: 0.18
+  max_preferred_speed: 0.85
 
 # 论文对应 3.4 局部风险自适应跟踪与重规划机制
 # 其中最关键的方法参数包括：
@@ -156,26 +157,54 @@ reference:
 # 其余参数主要用于工程稳定性和局部避碰恢复。
 local_planner:
   update_rate: 10.0
+  use_local_obstacle_map: false
+  local_obstacle_map_topic: "/isweep_planner/local_obstacle_map"
   window_length: 3.5
   window_resample_spacing: 0.25
-  high_risk_ratio_threshold: 0.35
+  high_risk_ratio_threshold: 0.5 #0.35
   low_risk_smoothing_alpha: 0.35
-  high_risk_lateral_replan_threshold: 0.35
-  high_risk_yaw_replan_threshold: 0.45
-  strict_reference_deviation_threshold: 0.40
-  low_risk_clearance_margin: 0.10
-  high_risk_clearance_margin: 0.05
+  high_risk_lateral_replan_threshold: 0.5 #0.35
+  high_risk_yaw_replan_threshold: 0.7  #0.45
+  strict_reference_deviation_threshold: 0.60 #0.4
+  low_risk_clearance_margin: 0.08
+  high_risk_clearance_margin: 0.06
+  clearance_target_cap: 0.35      # 局部校验的最大 clearance 目标，避免空旷区因参考 clearance 过大反复重规划
   push_step_size: 0.05
-  max_linear_speed: 0.50
-  max_angular_speed: 0.8
-  min_turn_linear_speed: 0.08
-  min_turning_radius: 0.75
-  angular_gain: 1.2
-  sharp_turn_yaw_error: 0.65
-  full_speed_yaw_error: 0.20
+  max_linear_speed: 0.65
+  max_angular_speed: 0.60
+  max_linear_accel: 1.5
+  max_angular_accel: 0.8
+  min_turn_linear_speed: 0.16
+  min_turning_radius: 0.90       # 阿克曼曲率约束：|curvature| <= 1 / min_turning_radius
+  angular_gain: 0.6  #0.9
+  sharp_turn_yaw_error: 0.85
+  full_speed_yaw_error: 0.28
+  pure_pursuit_lookahead: 1.20
+  pure_pursuit_lateral_deadband: 0.03
+  angular_deadband: 0.03
+  command_smoothing_alpha: 0.35
+  dynamic_obstacle_relevance_radius: 0.65
   push_max_iters: 8
-  consecutive_failure_limit: 3
-  blocked_window_limit: 2
+  consecutive_failure_limit: 30
+  blocked_window_limit: 30
+  horizon_time: 2.5              # 局部采样规划前向仿真时域
+  simulation_dt: 0.10
+  control_period: 0.10
+  velocity_samples: 5
+  curvature_samples: 7
+  target_curvature_samples: 4
+  allow_reverse: false           # 默认只前进；如底盘支持倒车，可改为 true
+  goal_reached_xy_tolerance: 0.25
+  goal_reached_yaw_tolerance: 0.35
+  low_risk_reference_weight: 2.0
+  high_risk_reference_weight: 8.0
+  yaw_weight: 0.4
+  obstacle_weight: 3.0
+  progress_weight: 2.5
+  speed_weight: 0.8
+  curvature_weight: 0.7
+  acceleration_weight: 0.8
+  angular_acceleration_weight: 1.5
 
 start_pose:
   x: 3.16

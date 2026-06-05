@@ -53,6 +53,8 @@ void SvsdfRuntime::LoadParameters(ros::NodeHandle& pnh) {
   pnh.param("topology/num_samples", topology_num_samples_, 520);
   pnh.param("topology/knn", topology_knn_, 18);
   pnh.param("topology/max_paths", topology_max_paths_, 14);
+  pnh.param("topology/safe_distance", topology_safe_distance_, 0.25);
+  topology_safe_distance_ = std::max(0.0, topology_safe_distance_);
 
   pnh.param("se2/discretization_step", se2_disc_step_, 0.15);
   pnh.param("kernel_yaw_num", yaw_bins_, 18);
@@ -119,7 +121,7 @@ bool SvsdfRuntime::UpdateMap(const nav_msgs::OccupancyGrid& map) {
   se2_generator_.init(grid_map_, collision_checker_, se2_disc_step_,
                       max_push_attempts_);
   hybrid_astar_.init(grid_map_, collision_checker_, hybrid_astar_params_);
-  const double topo_safe_dist = footprint_.inscribedRadius();
+  const double topo_safe_dist = topology_safe_distance_;
   topology_planner_.init(grid_map_, collision_checker_, topology_num_samples_,
                          topology_knn_, topology_max_paths_, topo_safe_dist);
   svsdf_evaluator_.initGridEsdf(grid_map_, footprint_);

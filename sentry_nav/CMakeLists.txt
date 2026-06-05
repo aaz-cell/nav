@@ -8,10 +8,17 @@ project(sentry_nav)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  costmap_2d
+  geometry_msgs
+  nav_msgs
   roscpp
   rospy
   std_msgs
+  teb_local_planner
   tf
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -138,6 +145,7 @@ include_directories(
 add_executable(trans_tf_2d src/Trans_TF_2d.cpp)
 add_executable(trans_tf_2d_odom src/Trans_TF_2d_odom.cpp)
 add_executable(trans_odom_2d src/Trans_odom_2d.cpp)
+add_executable(isweep_teb_local_planner_node src/Isweep_TEB_Local_Planner.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -161,6 +169,9 @@ target_link_libraries(trans_tf_2d_odom
   ${catkin_LIBRARIES}
 )
 target_link_libraries(trans_odom_2d
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(isweep_teb_local_planner_node
   ${catkin_LIBRARIES}
 )
 #############

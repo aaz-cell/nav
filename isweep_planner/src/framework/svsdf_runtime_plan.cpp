@@ -28,7 +28,7 @@ SvsdfPlanResult SvsdfRuntime::Plan(const Eigen::Vector3d& start,
   const Eigen::Vector2d start_2d(start_state.x, start_state.y);
   const Eigen::Vector2d goal_2d(goal_state.x, goal_state.y);
 
-  const double topo_safe_dist = footprint_.inscribedRadius();
+  const double topo_safe_dist = topology_safe_distance_;
   const double start_esdf = grid_map_.getEsdf(start_state.x, start_state.y);
   const double goal_esdf = grid_map_.getEsdf(goal_state.x, goal_state.y);
   ROS_INFO(

@@ -1,7 +1,9 @@
 <launch>
   <arg name="run_legacy_move_base" default="false" />
   <arg name="enable_isweep_cmd_output" default="true" />
+  <arg name="run_isweep_teb_local_planner" default="false" />
   <arg name="cmd_vel_topic" default="/cmd_vel" />
+  <arg name="isweep_teb_cmd_vel_topic" default="/isweep_teb_cmd_vel" />
   <arg name="need_replan_topic" default="/need_replan" />
 
   <include file="$(find fast_lio_localization)/launch/sentry_localize.launch" />
@@ -14,5 +16,10 @@
     <arg name="enable_cmd_output" value="$(arg enable_isweep_cmd_output)" />
     <arg name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
     <arg name="need_replan_topic" value="$(arg need_replan_topic)" />
+  </include>
+
+  <include file="$(find sentry_nav)/launch/isweep_teb_local_planner.launch">
+    <arg name="enable" value="$(arg run_isweep_teb_local_planner)" />
+    <arg name="cmd_vel_topic" value="$(arg isweep_teb_cmd_vel_topic)" />
   </include>
 </launch>

@@ -37,6 +37,7 @@ enum class LocalPlannerStatus {
 
 struct LocalPlanningResult {
   bool success = false;
+  bool has_command = false;
   bool need_replan = false;
   bool blocked = false;
   LocalPlannerMode mode = LocalPlannerMode::LOW_RISK_FOLLOW;

@@ -146,6 +146,7 @@ class SvsdfRuntime {
   int topology_num_samples_ = 520;
   int topology_knn_ = 18;
   int topology_max_paths_ = 14;
+  double topology_safe_distance_ = 0.25;
   double se2_disc_step_ = 0.15;
   int yaw_bins_ = 18;
   int max_push_attempts_ = 5;
