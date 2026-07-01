@@ -6,8 +6,8 @@
 # 说明：
 # - 本组主要是几何模型、地图等待与基础输入话题，不属于方法创新参数。
 # ==========================================
-footprint: [0.20, 0.25, 0.20, -0.25, -0.10, -0.25, -0.10, -0.09, -0.30, -0.09, -0.30, 0.09, -0.10, 0.09, -0.10, 0.25]
-inscribed_radius: 0.10 # 内切圆半径
+footprint: [0.225, 0.18, 0.225, -0.18, -0.225, -0.18, -0.225, 0.18]
+inscribed_radius: 0.18 # 内切圆半径
 
 startup_wait_for_map: true
 startup_map_wait_timeout: 0.0
@@ -16,7 +16,7 @@ startup_map_wait_poll: 1.0
 meshTopic: "/isweep_planner/mesh"
 edgeTopic: "/isweep_planner/mesh_edges"
 vertexTopic: "/isweep_planner/mesh_vertices"
-inputdata: "meshes/robot_t_shape.obj" # 用于高精度 SVSDF 碰撞评估的机器人网格模型
+inputdata: "meshes/robot_box_45x36x50.obj" # 用于高精度 SVSDF 碰撞评估的机器人网格模型
 
 # ==========================================
 # 2. Compute budget and space discretization
@@ -145,7 +145,7 @@ hybrid_astar:                 # (作为Fallback回退时触发，极其耗时)
 reference:
   sample_dt: 0.15
   min_preferred_speed: 0.18
-  max_preferred_speed: 0.85
+  max_preferred_speed: 0.45
 
 # 论文对应 3.4 局部风险自适应跟踪与重规划机制
 # 其中最关键的方法参数包括：
@@ -157,54 +157,22 @@ reference:
 # 其余参数主要用于工程稳定性和局部避碰恢复。
 local_planner:
   update_rate: 10.0
-  use_local_obstacle_map: false
-  local_obstacle_map_topic: "/isweep_planner/local_obstacle_map"
+  cmd_linear_sign: 1.0
+  cmd_angular_sign: -1.0
   window_length: 3.5
   window_resample_spacing: 0.25
-  high_risk_ratio_threshold: 0.5 #0.35
+  high_risk_ratio_threshold: 0.35
   low_risk_smoothing_alpha: 0.35
-  high_risk_lateral_replan_threshold: 0.5 #0.35
-  high_risk_yaw_replan_threshold: 0.7  #0.45
-  strict_reference_deviation_threshold: 0.60 #0.4
-  low_risk_clearance_margin: 0.08
-  high_risk_clearance_margin: 0.06
-  clearance_target_cap: 0.35      # 局部校验的最大 clearance 目标，避免空旷区因参考 clearance 过大反复重规划
+  high_risk_lateral_replan_threshold: 0.35
+  high_risk_yaw_replan_threshold: 0.45
+  strict_reference_deviation_threshold: 0.40
+  enforce_clearance_target: false
+  low_risk_clearance_margin: 0.10
+  high_risk_clearance_margin: 0.05
   push_step_size: 0.05
-  max_linear_speed: 0.65
-  max_angular_speed: 0.60
-  max_linear_accel: 1.5
-  max_angular_accel: 0.8
-  min_turn_linear_speed: 0.16
-  min_turning_radius: 0.90       # 阿克曼曲率约束：|curvature| <= 1 / min_turning_radius
-  angular_gain: 0.6  #0.9
-  sharp_turn_yaw_error: 0.85
-  full_speed_yaw_error: 0.28
-  pure_pursuit_lookahead: 1.20
-  pure_pursuit_lateral_deadband: 0.03
-  angular_deadband: 0.03
-  command_smoothing_alpha: 0.35
-  dynamic_obstacle_relevance_radius: 0.65
   push_max_iters: 8
-  consecutive_failure_limit: 30
-  blocked_window_limit: 30
-  horizon_time: 2.5              # 局部采样规划前向仿真时域
-  simulation_dt: 0.10
-  control_period: 0.10
-  velocity_samples: 5
-  curvature_samples: 7
-  target_curvature_samples: 4
-  allow_reverse: false           # 默认只前进；如底盘支持倒车，可改为 true
-  goal_reached_xy_tolerance: 0.25
-  goal_reached_yaw_tolerance: 0.35
-  low_risk_reference_weight: 2.0
-  high_risk_reference_weight: 8.0
-  yaw_weight: 0.4
-  obstacle_weight: 3.0
-  progress_weight: 2.5
-  speed_weight: 0.8
-  curvature_weight: 0.7
-  acceleration_weight: 0.8
-  angular_acceleration_weight: 1.5
+  consecutive_failure_limit: 3
+  blocked_window_limit: 2
 
 start_pose:
   x: 3.16

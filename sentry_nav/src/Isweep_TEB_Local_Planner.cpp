@@ -25,12 +25,6 @@ double Distance2d(const geometry_msgs::PoseStamped& a,
   return std::sqrt(dx * dx + dy * dy);
 }
 
-bool HasValidOrientation(const geometry_msgs::Quaternion& q) {
-  const double norm =
-      q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
-  return std::isfinite(norm) && norm > 1e-6;
-}
-
 geometry_msgs::Quaternion YawToQuaternion(double yaw) {
   tf2::Quaternion q;
   q.setRPY(0.0, 0.0, yaw);
@@ -110,19 +104,22 @@ class IsweepTebLocalPlannerNode {
         pose.header.stamp = msg.header.stamp.isZero() ? ros::Time::now()
                                                       : msg.header.stamp;
       }
-      if (!HasValidOrientation(pose.pose.orientation)) {
-        const size_t next = std::min(i + 1, msg.poses.size() - 1);
-        const size_t prev = i == 0 ? i : i - 1;
-        const double dx =
-            msg.poses[next].pose.position.x - msg.poses[prev].pose.position.x;
-        const double dy =
-            msg.poses[next].pose.position.y - msg.poses[prev].pose.position.y;
-        pose.pose.orientation = YawToQuaternion(std::atan2(dy, dx));
-      }
       if (!plan.empty() && Distance2d(plan.back(), pose) < 1e-3) {
         continue;
       }
       plan.push_back(pose);
+    }
+    // iSweep stores full SE(2) body yaw in its Path. For TEB this global plan
+    // yaw must describe path progression; otherwise TEB may track the same
+    // spatial path by commanding reverse motion.
+    for (size_t i = 0; i < plan.size(); ++i) {
+      const size_t prev = i == 0 ? i : i - 1;
+      const size_t next = (i + 1 < plan.size()) ? i + 1 : i;
+      const double dx = plan[next].pose.position.x - plan[prev].pose.position.x;
+      const double dy = plan[next].pose.position.y - plan[prev].pose.position.y;
+      if (std::hypot(dx, dy) > 1e-6) {
+        plan[i].pose.orientation = YawToQuaternion(std::atan2(dy, dx));
+      }
     }
     return plan;
   }

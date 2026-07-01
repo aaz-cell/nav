@@ -2,6 +2,10 @@
   <arg name="enable_cmd_output" default="false" />
   <arg name="cmd_vel_topic" default="/isweep_cmd_vel" />
   <arg name="need_replan_topic" default="/need_replan" />
+  <arg name="publish_zero_when_disabled" default="true" />
+  <arg name="ackermann_mode" default="false" />
+  <arg name="ackermann_min_turn_linear_speed" default="0.12" />
+  <arg name="ackermann_min_turn_radius" default="1.0" />
 
   <node pkg="dynamic_obstacle_adapter" type="dynamic_obstacle_adapter_node" name="dynamic_obstacle_adapter" output="screen">
     <param name="static_map_topic" value="/prior_map" />
@@ -32,8 +36,6 @@
     <rosparam file="$(find isweep_planner)/config/planner.yaml" command="load" />
     <param name="use_start_goal_params" value="false" />
     <param name="replan_on_map_update" value="false" />
-    <param name="local_planner/use_local_obstacle_map" value="false" />
-    <param name="local_planner/local_obstacle_map_topic" value="/isweep_planner/local_obstacle_map" />
     <remap from="/map" to="/isweep_planner/map" />
     <remap from="/initialpose" to="/isweep_planner/initialpose" />
     <remap from="/move_base_simple/goal" to="/isweep_planner/goal" />
@@ -41,7 +43,11 @@
 
   <node pkg="planner_bridge" type="planner_bridge_node" name="planner_bridge" output="screen">
     <param name="enable_cmd_output" value="$(arg enable_cmd_output)" />
+    <param name="publish_zero_when_disabled" value="$(arg publish_zero_when_disabled)" />
     <param name="cmd_vel_out_topic" value="$(arg cmd_vel_topic)" />
     <param name="need_replan_topic" value="$(arg need_replan_topic)" />
+    <param name="ackermann_mode" value="$(arg ackermann_mode)" />
+    <param name="ackermann_min_turn_linear_speed" value="$(arg ackermann_min_turn_linear_speed)" />
+    <param name="ackermann_min_turn_radius" value="$(arg ackermann_min_turn_radius)" />
   </node>
 </launch>

@@ -3,6 +3,9 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
 
+#include <algorithm>
+#include <cmath>
+
 namespace {
 
 class PlannerBridge {
@@ -34,12 +37,21 @@ class PlannerBridge {
     pnh_.param<std::string>("status_out_topic", status_out_topic_, "/isweep_status");
     pnh_.param<bool>("enable_cmd_output", enable_cmd_output_, false);
     pnh_.param<bool>("publish_zero_when_disabled", publish_zero_when_disabled_, true);
+    pnh_.param<bool>("ackermann_mode", ackermann_mode_, false);
+    pnh_.param<double>("ackermann_min_turn_linear_speed", ackermann_min_turn_linear_speed_, 0.12);
+    pnh_.param<double>("ackermann_min_turn_radius", ackermann_min_turn_radius_, 1.0);
+    pnh_.param<double>("linear_deadband", linear_deadband_, 0.03);
+    pnh_.param<double>("angular_deadband", angular_deadband_, 0.03);
+    ackermann_min_turn_linear_speed_ = std::max(0.0, ackermann_min_turn_linear_speed_);
+    ackermann_min_turn_radius_ = std::max(0.05, ackermann_min_turn_radius_);
+    linear_deadband_ = std::max(0.0, linear_deadband_);
+    angular_deadband_ = std::max(0.0, angular_deadband_);
   }
 
   void LocalCmdCallback(const geometry_msgs::Twist::ConstPtr& msg) {
     last_cmd_ = *msg;
     if (enable_cmd_output_) {
-      cmd_vel_pub_.publish(last_cmd_);
+      cmd_vel_pub_.publish(FilterForBase(last_cmd_));
     } else if (publish_zero_when_disabled_) {
       PublishZero("disabled");
     }
@@ -57,6 +69,39 @@ class PlannerBridge {
     geometry_msgs::Twist zero;
     cmd_vel_pub_.publish(zero);
     ROS_INFO_THROTTLE(5.0, "planner_bridge holding zero cmd_vel (%s)", reason);
+  }
+
+  geometry_msgs::Twist FilterForBase(const geometry_msgs::Twist& input) {
+    if (!ackermann_mode_) {
+      return input;
+    }
+
+    geometry_msgs::Twist output = input;
+    output.linear.y = 0.0;
+
+    const double abs_linear = std::abs(output.linear.x);
+    const double abs_angular = std::abs(output.angular.z);
+    if (abs_angular < angular_deadband_) {
+      output.angular.z = 0.0;
+      if (abs_linear < linear_deadband_) {
+        output.linear.x = 0.0;
+      }
+      return output;
+    }
+
+    if (abs_linear < linear_deadband_) {
+      output.linear.x = ackermann_min_turn_linear_speed_;
+      ROS_WARN_THROTTLE(2.0,
+                        "planner_bridge ackermann_mode converted in-place turn "
+                        "to forward turning command: vx=%.3f wz=%.3f",
+                        output.linear.x, output.angular.z);
+    }
+
+    const double max_abs_angular = std::abs(output.linear.x) / ackermann_min_turn_radius_;
+    if (max_abs_angular > 0.0 && abs_angular > max_abs_angular) {
+      output.angular.z = std::copysign(max_abs_angular, output.angular.z);
+    }
+    return output;
   }
 
   ros::NodeHandle nh_;
@@ -77,6 +122,11 @@ class PlannerBridge {
   std::string status_out_topic_;
   bool enable_cmd_output_ = false;
   bool publish_zero_when_disabled_ = true;
+  bool ackermann_mode_ = false;
+  double ackermann_min_turn_linear_speed_ = 0.12;
+  double ackermann_min_turn_radius_ = 1.0;
+  double linear_deadband_ = 0.03;
+  double angular_deadband_ = 0.03;
 };
 
 }  // namespace

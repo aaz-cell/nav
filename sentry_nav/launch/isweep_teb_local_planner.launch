@@ -3,6 +3,11 @@
   <arg name="global_plan_topic" default="/isweep_planner/trajectory" />
   <arg name="cmd_vel_topic" default="/isweep_teb_cmd_vel" />
   <arg name="status_topic" default="/isweep_teb_local_planner/status" />
+  <arg name="max_vel_x" default="0.65" />
+  <arg name="max_vel_x_backwards" default="0.05" />
+  <arg name="max_vel_theta" default="0.60" />
+  <arg name="acc_lim_x" default="1.5" />
+  <arg name="acc_lim_theta" default="0.8" />
 
   <group if="$(arg enable)">
     <node pkg="sentry_nav" type="isweep_teb_local_planner_node"
@@ -21,11 +26,11 @@
                 command="load" />
 
       <param name="TebLocalPlannerROS/odom_topic" value="/Odometry" />
-      <param name="TebLocalPlannerROS/max_vel_x" value="0.5" />
-      <param name="TebLocalPlannerROS/max_vel_x_backwards" value="0.2" />
-      <param name="TebLocalPlannerROS/max_vel_theta" value="0.7" />
-      <param name="TebLocalPlannerROS/acc_lim_x" value="0.6" />
-      <param name="TebLocalPlannerROS/acc_lim_theta" value="0.6" />
+      <param name="TebLocalPlannerROS/max_vel_x" value="$(arg max_vel_x)" />
+      <param name="TebLocalPlannerROS/max_vel_x_backwards" value="$(arg max_vel_x_backwards)" />
+      <param name="TebLocalPlannerROS/max_vel_theta" value="$(arg max_vel_theta)" />
+      <param name="TebLocalPlannerROS/acc_lim_x" value="$(arg acc_lim_x)" />
+      <param name="TebLocalPlannerROS/acc_lim_theta" value="$(arg acc_lim_theta)" />
     </node>
   </group>
 </launch>
