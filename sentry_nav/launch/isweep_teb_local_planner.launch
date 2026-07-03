@@ -3,7 +3,9 @@
   <arg name="global_plan_topic" default="/isweep_planner/trajectory" />
   <arg name="cmd_vel_topic" default="/isweep_teb_cmd_vel" />
   <arg name="status_topic" default="/isweep_teb_local_planner/status" />
-  <arg name="max_vel_x" default="0.65" />
+  <arg name="linear_x_scale" default="1.0" />
+  <arg name="angular_z_scale" default="-1.0" />
+  <arg name="max_vel_x" default="0.40" />
   <arg name="max_vel_x_backwards" default="0.05" />
   <arg name="max_vel_theta" default="0.60" />
   <arg name="acc_lim_x" default="1.5" />
@@ -15,8 +17,12 @@
       <param name="global_plan_topic" value="$(arg global_plan_topic)" />
       <param name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
       <param name="status_topic" value="$(arg status_topic)" />
+      <param name="linear_x_scale" value="$(arg linear_x_scale)" />
+      <param name="angular_z_scale" value="$(arg angular_z_scale)" />
+      <param name="goal_orientation_blend_distance" value="1.0" />
       <param name="control_rate" value="10.0" />
       <param name="plan_timeout" value="0.0" />
+      <param name="max_prestartup_plan_age" value="5.0" />
 
       <rosparam file="$(find sentry_nav)/param/costmap_common_params.yaml"
                 command="load" ns="local_costmap" />

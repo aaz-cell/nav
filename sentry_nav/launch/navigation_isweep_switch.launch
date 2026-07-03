@@ -9,6 +9,8 @@
   <arg name="ackermann_mode" default="false" />
   <arg name="ackermann_min_turn_linear_speed" default="0.12" />
   <arg name="ackermann_min_turn_radius" default="1.0" />
+  <arg name="teb_linear_x_scale" default="1.0" />
+  <arg name="teb_angular_z_scale" default="-1.0" />
 
   <include if="$(arg run_localization)" file="$(find fast_lio_localization)/launch/sentry_localize.launch">
     <arg name="rviz" value="$(arg rviz)" />
@@ -20,6 +22,7 @@
 
   <include unless="$(arg run_isweep_teb_local_planner)" file="$(find sentry_nav)/launch/isweep_parallel.launch">
     <arg name="enable_cmd_output" value="$(arg enable_isweep_cmd_output)" />
+    <arg name="run_isweep_local_planner" value="true" />
     <arg name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
     <arg name="need_replan_topic" value="$(arg need_replan_topic)" />
     <arg name="ackermann_mode" value="$(arg ackermann_mode)" />
@@ -29,6 +32,7 @@
 
   <include if="$(arg run_isweep_teb_local_planner)" file="$(find sentry_nav)/launch/isweep_parallel.launch">
     <arg name="enable_cmd_output" value="false" />
+    <arg name="run_isweep_local_planner" value="false" />
     <arg name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
     <arg name="need_replan_topic" value="$(arg need_replan_topic)" />
     <arg name="publish_zero_when_disabled" value="false" />
@@ -40,5 +44,7 @@
   <include if="$(arg run_isweep_teb_local_planner)" file="$(find sentry_nav)/launch/isweep_teb_local_planner.launch">
     <arg name="enable" value="$(arg run_isweep_teb_local_planner)" />
     <arg name="cmd_vel_topic" value="$(arg cmd_vel_topic)" />
+    <arg name="linear_x_scale" value="$(arg teb_linear_x_scale)" />
+    <arg name="angular_z_scale" value="$(arg teb_angular_z_scale)" />
   </include>
 </launch>

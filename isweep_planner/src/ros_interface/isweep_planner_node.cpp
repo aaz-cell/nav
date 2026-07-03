@@ -37,7 +37,9 @@ class IsweepPlannerNode {
                        runtime_.footprint()) {
     LoadParams();
     runtime_.Initialize(nh_, pnh_);
-    local_planner_.Initialize(pnh_);
+    if (run_local_planner_) {
+      local_planner_.Initialize(pnh_);
+    }
     ROS_INFO("iSweep Planner coarse-to-fine runtime initialized.");
     WarmupInitialMap();
     SetupPubSub();
@@ -51,6 +53,7 @@ class IsweepPlannerNode {
     pnh_.param("startup_map_wait_timeout", startup_map_wait_timeout_sec_, 0.0);
     pnh_.param("startup_map_wait_poll", startup_map_wait_poll_sec_, 1.0);
     pnh_.param("replan_on_map_update", replan_on_map_update_, false);
+    pnh_.param("run_local_planner", run_local_planner_, true);
     if (startup_map_wait_poll_sec_ < 0.1) {
       startup_map_wait_poll_sec_ = 0.1;
     }
@@ -168,10 +171,6 @@ class IsweepPlannerNode {
     map_sub_ = nh_.subscribe("/map", 1, &IsweepPlannerNode::MapCallback, this);
     start_sub_ = nh_.subscribe("/initialpose", 1, &IsweepPlannerNode::StartCallback, this);
     goal_sub_ = nh_.subscribe("/move_base_simple/goal", 1, &IsweepPlannerNode::GoalCallback, this);
-    current_pose_sub_ = nh_.subscribe("/isweep_planner/current_pose", 1,
-                                      &IsweepPlannerNode::CurrentPoseCallback, this);
-    current_velocity_sub_ = nh_.subscribe("/isweep_planner/current_velocity", 1,
-                                          &IsweepPlannerNode::CurrentVelocityCallback, this);
     trajectory_pub_ = nh_.advertise<nav_msgs::Path>("/isweep_planner/trajectory", 1, true);
     coarse_path_pub_ = nh_.advertise<nav_msgs::Path>("/isweep_planner/trajectory_astar", 1, true);
     risk_aware_reference_pub_ =
@@ -184,19 +183,28 @@ class IsweepPlannerNode {
     time_pub_ = nh_.advertise<std_msgs::Float64>("/isweep_planner/planning_time", 1, true);
     stats_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/isweep_planner/planning_stats", 1, true);
     marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/isweep_planner/markers", 1, true);
-    local_trajectory_pub_ =
-        nh_.advertise<nav_msgs::Path>("/isweep_planner/local_trajectory", 1, true);
-    local_cmd_pub_ =
-        nh_.advertise<geometry_msgs::Twist>("/isweep_planner/local_cmd", 1, true);
-    local_status_pub_ =
-        nh_.advertise<std_msgs::String>("/isweep_planner/local_planner_status", 1, true);
-    replan_request_pub_ =
-        nh_.advertise<std_msgs::Bool>("/isweep_planner/replan_request", 1, true);
-    local_marker_pub_ =
-        nh_.advertise<visualization_msgs::MarkerArray>("/isweep_planner/local_markers", 1, true);
-    local_planner_timer_ =
-        nh_.createTimer(ros::Duration(1.0 / local_planner_update_rate_hz_),
-                        &IsweepPlannerNode::LocalPlannerTimerCallback, this);
+    if (run_local_planner_) {
+      current_pose_sub_ = nh_.subscribe("/isweep_planner/current_pose", 1,
+                                        &IsweepPlannerNode::CurrentPoseCallback, this);
+      current_velocity_sub_ = nh_.subscribe("/isweep_planner/current_velocity", 1,
+                                            &IsweepPlannerNode::CurrentVelocityCallback, this);
+      local_trajectory_pub_ =
+          nh_.advertise<nav_msgs::Path>("/isweep_planner/local_trajectory", 1, true);
+      local_cmd_pub_ =
+          nh_.advertise<geometry_msgs::Twist>("/isweep_planner/local_cmd", 1, true);
+      local_status_pub_ =
+          nh_.advertise<std_msgs::String>("/isweep_planner/local_planner_status", 1, true);
+      replan_request_pub_ =
+          nh_.advertise<std_msgs::Bool>("/isweep_planner/replan_request", 1, true);
+      local_marker_pub_ =
+          nh_.advertise<visualization_msgs::MarkerArray>("/isweep_planner/local_markers", 1, true);
+      local_planner_timer_ =
+          nh_.createTimer(ros::Duration(1.0 / local_planner_update_rate_hz_),
+                          &IsweepPlannerNode::LocalPlannerTimerCallback, this);
+      ROS_INFO("iSweep local planner enabled at %.1f Hz.", local_planner_update_rate_hz_);
+    } else {
+      ROS_INFO("iSweep local planner disabled; global planning outputs only.");
+    }
 
     if (!use_start_goal_params_) {
       ROS_INFO("Waiting for RViz /initialpose and /move_base_simple/goal.");
@@ -468,6 +476,7 @@ class IsweepPlannerNode {
   bool current_pose_ready_ = false;
   bool planning_ = false;
   bool replan_on_map_update_ = false;
+  bool run_local_planner_ = true;
   bool has_planned_once_ = false;
   double local_planner_update_rate_hz_ = 10.0;
   double cmd_linear_sign_ = 1.0;

@@ -15,6 +15,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+#include <tf2/utils.h>
 
 namespace {
 
@@ -32,6 +33,10 @@ geometry_msgs::Quaternion YawToQuaternion(double yaw) {
   return tf2::toMsg(q);
 }
 
+double NormalizeAngle(double angle) {
+  return std::atan2(std::sin(angle), std::cos(angle));
+}
+
 class IsweepTebLocalPlannerNode {
  public:
   IsweepTebLocalPlannerNode()
@@ -39,6 +44,7 @@ class IsweepTebLocalPlannerNode {
         tf_buffer_(ros::Duration(10.0)),
         tf_listener_(tf_buffer_),
         costmap_ros_("local_costmap", tf_buffer_) {
+    startup_time_ = ros::Time::now();
     LoadParams();
 
     plan_sub_ = nh_.subscribe(global_plan_topic_, 1,
@@ -71,6 +77,11 @@ class IsweepTebLocalPlannerNode {
                             "/isweep_teb_cmd_vel");
     pnh_.param<std::string>("status_topic", status_topic_,
                             "/isweep_teb_local_planner/status");
+    pnh_.param<double>("linear_x_scale", linear_x_scale_, 1.0);
+    pnh_.param<double>("angular_z_scale", angular_z_scale_, -1.0);
+    pnh_.param<double>("goal_orientation_blend_distance",
+                       goal_orientation_blend_distance_, 1.0);
+    pnh_.param<double>("max_prestartup_plan_age", max_prestartup_plan_age_sec_, 5.0);
     pnh_.param<double>("control_rate", control_rate_hz_, 10.0);
     pnh_.param<double>("plan_timeout", plan_timeout_sec_, 0.0);
     pnh_.param<int>("min_plan_poses", min_plan_poses_, 2);
@@ -79,10 +90,20 @@ class IsweepTebLocalPlannerNode {
 
     control_rate_hz_ = std::max(1.0, control_rate_hz_);
     plan_timeout_sec_ = std::max(0.0, plan_timeout_sec_);
+    max_prestartup_plan_age_sec_ = std::max(0.0, max_prestartup_plan_age_sec_);
+    goal_orientation_blend_distance_ =
+        std::max(0.0, goal_orientation_blend_distance_);
     min_plan_poses_ = std::max(2, min_plan_poses_);
   }
 
   void PlanCallback(const nav_msgs::Path::ConstPtr& msg) {
+    if (!msg->header.stamp.isZero() &&
+        msg->header.stamp + ros::Duration(max_prestartup_plan_age_sec_) <
+            startup_time_) {
+      ROS_WARN("Ignoring pre-startup iSweep path stamped %.3f (TEB started at %.3f).",
+               msg->header.stamp.toSec(), startup_time_.toSec());
+      return;
+    }
     std::vector<geometry_msgs::PoseStamped> plan = NormalizePlan(*msg);
     std::lock_guard<std::mutex> lock(mutex_);
     latest_plan_ = std::move(plan);
@@ -109,9 +130,16 @@ class IsweepTebLocalPlannerNode {
       }
       plan.push_back(pose);
     }
+    if (plan.empty()) {
+      return plan;
+    }
+
+    const double goal_yaw = tf2::getYaw(plan.back().pose.orientation);
+
     // iSweep stores full SE(2) body yaw in its Path. For TEB this global plan
     // yaw must describe path progression; otherwise TEB may track the same
-    // spatial path by commanding reverse motion.
+    // spatial path by commanding reverse motion. Preserve the requested goal
+    // yaw and blend toward it near the end so TEB can enforce terminal pose.
     for (size_t i = 0; i < plan.size(); ++i) {
       const size_t prev = i == 0 ? i : i - 1;
       const size_t next = (i + 1 < plan.size()) ? i + 1 : i;
@@ -121,6 +149,27 @@ class IsweepTebLocalPlannerNode {
         plan[i].pose.orientation = YawToQuaternion(std::atan2(dy, dx));
       }
     }
+
+    std::vector<double> distance_to_goal(plan.size(), 0.0);
+    for (size_t i = plan.size(); i > 1; --i) {
+      distance_to_goal[i - 2] =
+          distance_to_goal[i - 1] + Distance2d(plan[i - 2], plan[i - 1]);
+    }
+    for (size_t i = 0; i < plan.size(); ++i) {
+      if (distance_to_goal[i] > goal_orientation_blend_distance_) {
+        continue;
+      }
+      const double tangent_yaw = tf2::getYaw(plan[i].pose.orientation);
+      const double alpha =
+          goal_orientation_blend_distance_ > 1e-6
+              ? 1.0 - distance_to_goal[i] / goal_orientation_blend_distance_
+              : 1.0;
+      const double blended_yaw =
+          NormalizeAngle(tangent_yaw +
+                         alpha * NormalizeAngle(goal_yaw - tangent_yaw));
+      plan[i].pose.orientation = YawToQuaternion(blended_yaw);
+    }
+    plan.back().pose.orientation = YawToQuaternion(goal_yaw);
     return plan;
   }
 
@@ -166,6 +215,8 @@ class IsweepTebLocalPlannerNode {
       return;
     }
 
+    cmd.linear.x *= linear_x_scale_;
+    cmd.angular.z *= angular_z_scale_;
     cmd_pub_.publish(cmd);
     PublishStatus("OK", "TEB tracking iSweep global path");
   }
@@ -202,6 +253,7 @@ class IsweepTebLocalPlannerNode {
   std::mutex mutex_;
   std::vector<geometry_msgs::PoseStamped> latest_plan_;
   ros::Time latest_plan_stamp_;
+  ros::Time startup_time_;
   bool have_plan_ = false;
   bool plan_dirty_ = false;
 
@@ -209,6 +261,10 @@ class IsweepTebLocalPlannerNode {
   std::string cmd_vel_topic_;
   std::string status_topic_;
   double control_rate_hz_ = 10.0;
+  double linear_x_scale_ = 1.0;
+  double angular_z_scale_ = -1.0;
+  double goal_orientation_blend_distance_ = 1.0;
+  double max_prestartup_plan_age_sec_ = 5.0;
   double plan_timeout_sec_ = 0.0;
   int min_plan_poses_ = 2;
   bool publish_zero_when_idle_ = true;

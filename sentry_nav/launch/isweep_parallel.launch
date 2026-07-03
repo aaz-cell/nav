@@ -3,6 +3,7 @@
   <arg name="cmd_vel_topic" default="/isweep_cmd_vel" />
   <arg name="need_replan_topic" default="/need_replan" />
   <arg name="publish_zero_when_disabled" default="true" />
+  <arg name="run_isweep_local_planner" default="true" />
   <arg name="ackermann_mode" default="false" />
   <arg name="ackermann_min_turn_linear_speed" default="0.12" />
   <arg name="ackermann_min_turn_radius" default="1.0" />
@@ -36,6 +37,7 @@
     <rosparam file="$(find isweep_planner)/config/planner.yaml" command="load" />
     <param name="use_start_goal_params" value="false" />
     <param name="replan_on_map_update" value="false" />
+    <param name="run_local_planner" value="$(arg run_isweep_local_planner)" />
     <remap from="/map" to="/isweep_planner/map" />
     <remap from="/initialpose" to="/isweep_planner/initialpose" />
     <remap from="/move_base_simple/goal" to="/isweep_planner/goal" />

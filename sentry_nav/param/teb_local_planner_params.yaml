@@ -76,8 +76,8 @@ TebLocalPlannerROS:
   acc_lim_theta: 0.8
 
   # 目标公差
-  xy_goal_tolerance: 0.2
-  yaw_goal_tolerance: 0.35
+  xy_goal_tolerance: 0.10
+  yaw_goal_tolerance: 0.20
   free_goal_vel: false
 
   # 障碍物避障
@@ -91,7 +91,7 @@ TebLocalPlannerROS:
   teb_autosize: True
   dt_ref: 0.3
   dt_hysteresis: 0.1
-  global_plan_overwrite_orientation: True
+  global_plan_overwrite_orientation: False
   max_global_plan_lookahead_dist: 3.0
   feasibility_check_no_poses: 5
 

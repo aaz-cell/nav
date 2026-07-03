@@ -71,6 +71,18 @@ Visualization Manager:
       Topic: /isweep_planner/trajectory
       Unreliable: false
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /isweep_planner/markers
+      Name: iSweep Risk and Footprints
+      Namespaces:
+        footprint: true
+        risk_reference_high: true
+        risk_reference_high_points: true
+        risk_reference_low: true
+        risk_reference_low_points: true
+      Queue Size: 100
+      Value: true
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
