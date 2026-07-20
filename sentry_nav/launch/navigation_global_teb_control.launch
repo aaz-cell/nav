@@ -1,0 +1,58 @@
+<launch>
+  <!-- Control group: ROS GlobalPlanner + TEB, with the same localization,
+       costmaps, velocity limits, and command topic as the iSweep + TEB group. -->
+  <arg name="run_localization" default="true" />
+  <arg name="rviz" default="true" />
+  <arg name="map" default="$(find fast_lio)/PCD/2026.5.24/scans.pcd" />
+  <arg name="map_2d" default="$(find fast_lio)/PCD/2026.5.24/map.yaml" />
+  <arg name="cmd_vel_topic" default="/cmd_vel" />
+  <arg name="max_vel_x" default="0.40" />
+  <arg name="max_vel_x_backwards" default="0.05" />
+  <arg name="max_vel_theta" default="0.60" />
+  <arg name="acc_lim_x" default="1.5" />
+  <arg name="acc_lim_theta" default="0.8" />
+
+  <include if="$(arg run_localization)"
+           file="$(find fast_lio_localization)/launch/sentry_localize.launch">
+    <arg name="rviz" value="$(arg rviz)" />
+    <arg name="map" value="$(arg map)" />
+    <arg name="map_2d" value="$(arg map_2d)" />
+  </include>
+
+  <node pkg="sentry_nav" type="trans_tf_2d" name="trans_tF_2d" />
+
+  <node pkg="move_base" type="move_base" name="move_base"
+        output="screen" respawn="false" clear_params="true">
+    <remap from="/map" to="/prior_map" />
+    <remap from="/odom" to="/Odometry" />
+    <remap from="cmd_vel" to="$(arg cmd_vel_topic)" />
+
+    <param name="base_global_planner"
+           value="global_planner/GlobalPlanner" />
+    <param name="base_local_planner"
+           value="teb_local_planner/TebLocalPlannerROS" />
+
+    <rosparam file="$(find sentry_nav)/param/costmap_common_params.yaml"
+              command="load" ns="global_costmap" />
+    <rosparam file="$(find sentry_nav)/param/costmap_common_params.yaml"
+              command="load" ns="local_costmap" />
+    <rosparam file="$(find sentry_nav)/param/local_costmap_params.yaml"
+              command="load" />
+    <rosparam file="$(find sentry_nav)/param/global_costmap_params.yaml"
+              command="load" />
+    <rosparam file="$(find sentry_nav)/param/teb_local_planner_params.yaml"
+              command="load" />
+    <rosparam file="$(find sentry_nav)/param/global_planner_params.yaml"
+              command="load" />
+
+    <!-- Match the velocity limits used by isweep_teb_local_planner.launch. -->
+    <param name="TebLocalPlannerROS/max_vel_x" value="$(arg max_vel_x)" />
+    <param name="TebLocalPlannerROS/max_vel_x_backwards"
+           value="$(arg max_vel_x_backwards)" />
+    <param name="TebLocalPlannerROS/max_vel_theta"
+           value="$(arg max_vel_theta)" />
+    <param name="TebLocalPlannerROS/acc_lim_x" value="$(arg acc_lim_x)" />
+    <param name="TebLocalPlannerROS/acc_lim_theta"
+           value="$(arg acc_lim_theta)" />
+  </node>
+</launch>

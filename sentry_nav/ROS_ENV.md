@@ -19,7 +19,7 @@ If the shell is opened in `conda base`, `python3` may resolve to
 ## Recommended usage
 
 ```bash
-cd ~/robot3/nav_ws/src/NEXTE_Sentry_Nav
+cd ~/nav_ws/src/NEXTE_Sentry_Nav
 bash sentry_nav/scripts/launch_isweep_clean.sh
 ```
 
@@ -37,6 +37,9 @@ Expected:
 - `which python3` should point to `/usr/bin/python3`
 - `import rospy, ros_numpy` should succeed
 - `rospack find sentry_nav` should resolve to this workspace
+
+If `livox_ros_driver2` is built in a workspace other than `~/Livox_ws`, set
+`LIVOX_WS` before running the wrapper.
 
 ## Optional shell hygiene
 

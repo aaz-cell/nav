@@ -14,13 +14,13 @@ fi
 unset PYTHONHOME
 export PYTHONNOUSERSITE=1
 
-# Remove miniconda prefixes from PATH for this shell.
+# Remove common conda prefixes from PATH for this shell.
 if [[ -n "${PATH:-}" ]]; then
   CLEAN_PATH=""
   OLD_IFS="$IFS"
   IFS=':'
   for entry in $PATH; do
-    if [[ "$entry" == "/home/zhl/miniconda3/bin" || "$entry" == "/home/zhl/miniconda3/condabin" ]]; then
+    if [[ "$entry" == *"/miniconda3/"* || "$entry" == *"/anaconda3/"* ]]; then
       continue
     fi
     if [[ -z "$CLEAN_PATH" ]]; then
@@ -35,12 +35,16 @@ fi
 
 source /opt/ros/noetic/setup.bash
 
-if [[ -f "/home/zhl/Livox_ws/devel/setup.bash" ]]; then
-  source /home/zhl/Livox_ws/devel/setup.bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+LIVOX_SETUP="${LIVOX_WS:-${HOME}/Livox_ws}/devel/setup.bash"
+
+if [[ -f "${LIVOX_SETUP}" ]]; then
+  source "${LIVOX_SETUP}"
 fi
 
-if [[ -f "/home/zhl/robot3/nav_ws/devel/setup.bash" ]]; then
-  source /home/zhl/robot3/nav_ws/devel/setup.bash
+if [[ -f "${WORKSPACE_DIR}/devel/setup.bash" ]]; then
+  source "${WORKSPACE_DIR}/devel/setup.bash"
 fi
 
 echo "ROS_PYTHON=$(command -v python3)"

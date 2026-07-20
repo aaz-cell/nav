@@ -1,7 +1,8 @@
 <launch>
-  <arg name="run_legacy_move_base" default="false" />
   <arg name="run_localization" default="true" />
   <arg name="rviz" default="true" />
+  <arg name="map" default="$(find fast_lio)/PCD/2026.5.24/scans.pcd" />
+  <arg name="map_2d" default="$(find fast_lio)/PCD/2026.5.24/map.yaml" />
   <arg name="enable_isweep_cmd_output" default="true" />
   <arg name="run_isweep_teb_local_planner" default="false" />
   <arg name="cmd_vel_topic" default="/cmd_vel" />
@@ -14,11 +15,11 @@
 
   <include if="$(arg run_localization)" file="$(find fast_lio_localization)/launch/sentry_localize.launch">
     <arg name="rviz" value="$(arg rviz)" />
+    <arg name="map" value="$(arg map)" />
+    <arg name="map_2d" value="$(arg map_2d)" />
   </include>
 
   <node pkg="sentry_nav" type="trans_tf_2d" name="trans_tF_2d" />
-
-  <include if="$(arg run_legacy_move_base)" file="$(find sentry_nav)/launch/sentry_movebase.launch" />
 
   <include unless="$(arg run_isweep_teb_local_planner)" file="$(find sentry_nav)/launch/isweep_parallel.launch">
     <arg name="enable_cmd_output" value="$(arg enable_isweep_cmd_output)" />
