@@ -93,6 +93,51 @@ run_localization:=false rviz:=false
 
 公共 TEB 与代价地图参数位于 `sentry_nav/param/`；iSweep 参数位于 `isweep_planner/config/planner.yaml`。
 
+## 实验结果记录
+
+`experiment_recorder.py` 对 iSweep + TEB 与 GlobalPlanner + TEB 使用同一套指标定义。每次向 `/move_base_simple/goal` 发布目标后，它会记录端到端规划延迟、首条全局路径长度、实际行驶距离、导航时间、终点误差、最小激光量程、速度/加速度/jerk、停顿、换向和成功状态。
+
+在线记录 iSweep + TEB：
+
+```bash
+mkdir -p ~/robot3/experiment_data
+rosrun sentry_nav experiment_recorder.py \
+  --mode isweep_teb \
+  --output ~/robot3/experiment_data/isweep_teb_runs.csv
+```
+
+在线记录对照组：
+
+```bash
+rosrun sentry_nav experiment_recorder.py \
+  --mode global_teb \
+  --output ~/robot3/experiment_data/global_teb_runs.csv
+```
+
+记录器应在发送 RViz 导航目标前启动。它支持在同一进程中连续记录多个目标，并在目标成功、失败、超时、被新目标替换或节点退出时写入一行。默认统一成功容差为位置 `0.10 m`、航向 `0.20 rad`、持续 `1.0 s`，默认超时为 `180 s`。
+
+离线汇总一个或多个 rosbag 时使用系统 ROS Python；该流程不需要 conda 中的 Open3D：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source ~/robot3/nav_ws/devel/setup.bash
+
+/usr/bin/python3 \
+  ~/robot3/nav_ws/src/NEXTE_Sentry_Nav/sentry_nav/scripts/experiment_recorder.py \
+  --bag ~/robot3/experiment_data/*.bag \
+  --mode auto \
+  --output ~/robot3/experiment_data/experiment_results.csv
+```
+
+用于离线分析的 bag 至少应包含 `/move_base_simple/goal`、`/localization`、`/cmd_vel`，以及对应组的 `/isweep_planner/trajectory` 或 `/move_base/GlobalPlanner/plan`。若还要统计最小激光量程和状态，需同时记录 `/scan`、`/isweep_teb_local_planner/status` 或 `/move_base/status`；iSweep 内部耗时还需 `/isweep_planner/planning_time` 与 `/isweep_planner/planning_stats`。
+
+离线模式生成两个文件：
+
+- `experiment_results.csv`：每个 bag 中每个目标一行的详细指标。
+- `experiment_results_summary.csv`：按模式汇总运行次数、成功率，以及规划时间、路径长度、导航时间、实际距离和控制平滑性的均值/中位数/标准差。
+
+自动识别依赖两组各自的全局路径话题。若一个 bag 中混有两个导航栈的话题，应显式使用 `--mode isweep_teb` 或 `--mode global_teb`。公平对照采用 `planning_latency_s`，即目标消息到第一条有效全局路径的端到端时间；`planner_reported_time_s` 和 `isweep_*` 字段仅作为 iSweep 内部阶段分析，不应直接当成两组共同指标。
+
 ## Python 环境
 
 ROS Noetic 节点应使用系统 Python。若终端自动激活了 conda，可使用：

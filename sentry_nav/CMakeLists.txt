@@ -38,6 +38,7 @@ install(DIRECTORY launch param rviz
 )
 
 catkin_install_python(PROGRAMS
+  scripts/experiment_recorder.py
   scripts/fake_start_pose.py
   scripts/plan_timer.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -9,10 +9,12 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>costmap_2d</depend>
+  <depend>actionlib_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>teb_local_planner</depend>
   <depend>tf</depend>
@@ -30,5 +32,6 @@
   <exec_depend>navigation_adapter</exec_depend>
   <exec_depend>planner_bridge</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
+  <exec_depend>rosbag</exec_depend>
   <exec_depend>rviz</exec_depend>
 </package>
